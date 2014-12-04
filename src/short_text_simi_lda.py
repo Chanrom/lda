@@ -129,11 +129,15 @@ def getProAndIndex(text_dist, word_list, topic):
         if pro > max_pro:
             max_pro_token = token
             max_token_index = index
-    
+            max_pro = pro
+#    print max_pro, max_token_index
     return (max_pro, max_token_index)
 
 def getMaxProAndIndex(word_list, text_hash1, text_hash2, topic):
-    
+#    print word_list
+#    print text_hash1
+#    print text_hash2
+#    print topic
     text_dist1 = []
     text_dist2 = []
     for item in word_list:
@@ -157,7 +161,8 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
 
     for topic in topics:
         for text_data in mass_data:
-
+            
+            
             text_vec1 = text_data[0]
             text_vec2 = text_data[1]
             word_list =  text_data[2]
@@ -170,8 +175,21 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
             max_pro2 = pro_index_data[1][0]
             max_token_index2 =  pro_index_data[1][1]
             if max_token_index1 != -1 and max_token_index2 != -1 and max_pro1 > 0.05 and max_pro2 > 0.05:
-                text_vec1[max_token_index1] += text_vec2[max_token_index1] * max_pro1
-                text_vec2[max_token_index2] += text_vec1[max_token_index2] * max_pro2
+                print 'modify'
+                print topic
+                print word_list
+                print text_vec1
+                print text_vec2
+                print max_token_index1, max_pro1
+                print max_token_index2, max_pro2
+                print text_vec1[max_token_index2], text_vec2[max_token_index2]
+                print text_vec2[max_token_index1], text_vec1[max_token_index1]
+                text_vec1[max_token_index2] += text_vec2[max_token_index2] * max_pro1
+                text_vec2[max_token_index1] += text_vec1[max_token_index1] * max_pro2
+                print text_vec1
+                print text_vec2
+                print text_vec1[max_token_index2]
+                print text_vec2[max_token_index1]
             
     for text_data in mass_data:
         text_vec1 = text_data[0]
@@ -193,13 +211,13 @@ def calculateSimi(test_corpus, lda, train_text_number, token_text_count):
         dictionary = corpora.Dictionary([text_list1, text_list2])
 
         sorted_dict = sorted(dictionary.token2id.iteritems(), key = lambda d:d[1], reverse = False)
-        print 'sorted_dict:', sorted_dict
+#        print 'sorted_dict:', sorted_dict
 
         text_vec_hash1 = convertList2Hash(dictionary.doc2bow(text_list1))
         text_vec_hash2 = convertList2Hash(dictionary.doc2bow(text_list2))
         
-        print 'text_vec_hash1:', text_vec_hash1
-        print 'text_vec_hash2:', text_vec_hash2
+#        print 'text_vec_hash1:', text_vec_hash1
+#        print 'text_vec_hash2:', text_vec_hash2
 
         ## VSM Model, calculate tf-idf        
         text_vec1 = []
@@ -248,6 +266,9 @@ for index in range(len(gs_lines)):
         sum_gs += 1
     elif int(gs_lines[index][0]) == 1:
         sum_gs += 1
+print tt
+print sum(test_result)
+print sum_gs
 
 P = float(tt) / sum(test_result)
 R = float(tt) / sum_gs
