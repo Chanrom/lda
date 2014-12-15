@@ -153,6 +153,10 @@ def getMaxProAndIndex(word_list, text_hash1, text_hash2, topic):
     
     return [(max_pro1, max_token_index1), (max_pro2, max_token_index2)]
 
+def modifyFunction(text_vec1, max_token_index1, max_pro1, text_vec2, max_token_index2, max_pro2):
+    ##论文的调整方法
+    text_vec1[max_token_index2] += text_vec2[max_token_index2] * max_pro1
+    text_vec2[max_token_index1] += text_vec1[max_token_index1] * max_pro2
 
 def modifyCosineSimi(mass_data, lda, test_corpus_simis):
  
@@ -161,7 +165,6 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
 
     for topic in topics:
         for text_data in mass_data:
-            
             
             text_vec1 = text_data[0]
             text_vec2 = text_data[1]
@@ -184,8 +187,7 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
                 print max_token_index2, max_pro2
                 print text_vec1[max_token_index2], text_vec2[max_token_index2]
                 print text_vec2[max_token_index1], text_vec1[max_token_index1]
-                text_vec1[max_token_index2] += text_vec2[max_token_index2] * max_pro1
-                text_vec2[max_token_index1] += text_vec1[max_token_index1] * max_pro2
+                mofidyFunction(text_vec1, max_token_index1, max_pro1, text_vec2, max_token_index2, max_pro2)
                 print text_vec1
                 print text_vec2
                 print text_vec1[max_token_index2]
