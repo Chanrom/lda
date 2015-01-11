@@ -33,7 +33,12 @@ def getCorpusText(train_file, train):
 def cleanText(text): ## remove common words and tokenize
     word_list = text.lower().replace('.', '').replace(',', '')\
 .replace('?', '').replace(':', '').replace('!', '').replace('-', '')\
-.replace('(', '').replace(')', '').replace('  ', ' ').split(' ')
+.replace('(', '').replace(')', '').replace('--', '-').replace('--', '-').replace('\n', ' ').replace('-', ' ')\
+.replace("isn't", 'is not').replace("aren't", "are not").replace("wasn't", "was not")\
+.replace("weren't", "were not").replace("cann't", "can not").replace("can't", "can not")\
+.replace("couldn't", "could not").replace("mustn't", "must not").replace("haven't", "have not")\
+.replace("hasn't", "has not").replace("hadn't", "had not").replace("don't", "do not")\
+.replace("doesn't", "does not").replace("didn't", "did not").replace('  ', ' ').split(' ')
     
     return [word for word in word_list if not word in corpus.stopwords.words('english')]
 
@@ -78,7 +83,7 @@ def getLDATopic(train_corpus):
     corpora.MmCorpus.serialize('../data/corpus.mm', corpus) # store to disk, for later use
 
     mm = corpora.MmCorpus('../data/corpus.mm')
-    lda = models.ldamodel.LdaModel(corpus = mm, id2word = dictionary, num_topics = NUM_TOPICS)
+    lda = models.ldamodel.LdaModel(corpus = mm, id2word = dictionary, num_topics = NUM_TOPICS, alpha = float(50) / NUM_TOPICS, eta = 0.01)
 
     #lda.print_topics(100)
     return (lda, token_document_count)
@@ -100,11 +105,16 @@ def calculateTfidf(text_vec, token_list, text_dic, train_text_number, token_text
         tf_idf = 0
         token = item[0]
         token_index = item[1]
-        if text_dic.has_key(token_index) and token_text_count.has_key(token):
-            tf = text_dic[token_index]
-            idf = math.log(train_text_number / token_text_count[token], 2)
-            tf_idf = tf * idf
-
+#        if text_dic.has_key(token_index) and token_text_count.has_key(token):
+#            tf = float(text_dic[token_index]) / sum(text_dic.values())
+#            idf = math.log(train_text_number / token_text_count[token], 2)
+#            tf_idf = tf * idf
+        if text_dic.has_key(token_index):
+            tf_idf = float(text_dic[token_index]) / sum(text_dic.values())
+#        if text_dic.has_key(token_index):
+#            tf_idf = 1
+#        if token_text_count.has_key(token):
+#            tf_idf = math.log(train_text_number / token_text_count[token], 2)
         text_vec.append(tf_idf)
 
 def getTopics(lda, topics):
@@ -126,6 +136,7 @@ def getProAndIndex(text_dist, word_list, topic):
     for index in text_dist:
         token = word_list[index][0]
         pro = topic[token] if topic.has_key(token) else 0
+
         if pro > max_pro:
             max_pro_token = token
             max_token_index = index
@@ -154,21 +165,21 @@ def getMaxProAndIndex(word_list, text_hash1, text_hash2, topic):
     return [(max_pro1, max_token_index1), (max_pro2, max_token_index2)]
 
 def modifyFunction(text_vec1, max_token_index1, max_pro1, text_vec2, max_token_index2, max_pro2):
-    ##论文的调整方法
-    text_vec1[max_token_index2] += text_vec2[max_token_index2] * max_pro1
-    text_vec2[max_token_index1] += text_vec1[max_token_index1] * max_pro2
+ 
+    text_vec1[max_token_index2] += text_vec2[max_token_index2] * max_pro2
+    text_vec2[max_token_index1] += text_vec1[max_token_index1] * max_pro1
 
 def modifyCosineSimi(mass_data, lda, test_corpus_simis):
  
     topics = []
     getTopics(lda, topics)
 
-    for topic in topics:
-        for text_data in mass_data:
+    for text_data in mass_data:
+        for topic in topics:
             
             text_vec1 = text_data[0]
             text_vec2 = text_data[1]
-            word_list =  text_data[2]
+            word_list = text_data[2]
             text_hash1 = text_data[3]
             text_hash2 = text_data[4]
             
@@ -177,7 +188,7 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
             max_token_index1 = pro_index_data[0][1]
             max_pro2 = pro_index_data[1][0]
             max_token_index2 =  pro_index_data[1][1]
-            if max_token_index1 != -1 and max_token_index2 != -1 and max_pro1 > 0.05 and max_pro2 > 0.05:
+            if max_token_index1 != -1 and max_token_index2 != -1 and max_pro1 > 0.009 and max_pro2 > 0.009:
                 print 'modify'
                 print topic
                 print word_list
@@ -187,7 +198,7 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
                 print max_token_index2, max_pro2
                 print text_vec1[max_token_index2], text_vec2[max_token_index2]
                 print text_vec2[max_token_index1], text_vec1[max_token_index1]
-                mofidyFunction(text_vec1, max_token_index1, max_pro1, text_vec2, max_token_index2, max_pro2)
+                modifyFunction(text_vec1, max_token_index1, max_pro1, text_vec2, max_token_index2, max_pro2)
                 print text_vec1
                 print text_vec2
                 print text_vec1[max_token_index2]
@@ -196,6 +207,13 @@ def modifyCosineSimi(mass_data, lda, test_corpus_simis):
     for text_data in mass_data:
         text_vec1 = text_data[0]
         text_vec2 = text_data[1]
+        test_corpus_simis.append(1 - spatial.distance.cosine(text_vec1, text_vec2))
+
+def cosineSimi(mass_data, test_corpus_simis):
+    for text_data in mass_data:
+        text_vec1 = text_data[0]
+        text_vec2 = text_data[1]
+        
         test_corpus_simis.append(1 - spatial.distance.cosine(text_vec1, text_vec2))
 
 def calculateSimi(test_corpus, lda, train_text_number, token_text_count):
@@ -229,7 +247,11 @@ def calculateSimi(test_corpus, lda, train_text_number, token_text_count):
 
         mass_data.append((text_vec1, text_vec2, sorted_dict, text_vec_hash1, text_vec_hash2))
 
+    ##use lda to modify tf-idf vectors
     modifyCosineSimi(mass_data, lda, test_corpus_simis)
+    
+    ##no modifying
+#    cosineSimi(mass_data, test_corpus_simis)
 
     return test_corpus_simis
 
@@ -262,21 +284,26 @@ for simi in test_corpus_simi:
 gs_lines = codecs.open('../data/gold.result', 'r', encoding='utf-8').readlines()
 sum_gs = 0
 tt = 0
+tf = 0
 for index in range(len(gs_lines)):
+    if test_result[index] == int(gs_lines[index][0]):
+        tf += 1
     if test_result[index] == 1 and int(gs_lines[index][0]) == 1:
         tt += 1
         sum_gs += 1
     elif int(gs_lines[index][0]) == 1:
         sum_gs += 1
+print tf
 print tt
 print sum(test_result)
 print sum_gs
-
+A = float(tf) / len(gs_lines)
 P = float(tt) / sum(test_result)
 R = float(tt) / sum_gs
-print '\nP:', P
+print '\nA:', A
+print 'P:', P
 print 'R:', R
-print 'F', 2 * P * R / (P + R)
+print 'F:', 2 * P * R / (P + R)
 
 
 f = codecs.open('../data/test.result', 'w', encoding='utf-8')
